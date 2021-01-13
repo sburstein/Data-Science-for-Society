@@ -1,0 +1,243 @@
+---
+title: "Basics of Text Analysis"
+author: "Scott Burstein"
+date: "10/17/2020"
+###"Data Science and Society (Sociology 367) - Lab #8"
+output: html_document
+---
+
+In this lab, we will practice working with text using stringr, tidytext, and tm packages. Edit the Lab #8 markdown file ([link to file](/assignments/Lab_8.Rmd)) for your submission. Remember to change the "author" field above to your name. **Send the markdown file (.Rmd) to your TA via direct message on Slack.** Be sure to do the required reading!
+
+**Required reading:** 
+
+* R for Data Science: [Working with strings (Chapter 14)](https://r4ds.had.co.nz/strings.html)
+
+
+**Optional reading:** 
+
+* [stringr package docs](https://www.rdocumentation.org/packages/stringr/versions/1.4.0)
+* [tidytext package docs](https://www.rdocumentation.org/packages/tidytext/versions/0.2.6)
+* [tm package docs](https://cran.r-project.org/web/packages/tm/tm.pdf)
+* Test and develop regex expressions on [regexr.com](https://regexr.com/)
+
+
+
+### Required Datasets
+
+We will use the following datasets for the exercises.
+
+(1) `covid_tweets`: (load using link below) is a semi-random set of tweets that used the hashtag #coronavirus.
+
+
+**Load the datasets and libraries. You shouldn't need to change the URL in the `load` function**
+```{r message=FALSE}
+library(tidyverse)
+library(stringr)
+library(tidytext)
+library(tm)
+
+# THIS SHOULD WORK AS-IS
+load(url('https://dssoc.github.io/datasets/Coronavirus_Tweets.Rdata'))
+view(covid_tweets)
+```
+<br/>
+
+## Exercises
+<br/>
+
+**1. Create a regular expression which matches a URL in the example string `ex`, and verify that it works using `str_view_all` (described in R for data science [Ch. 14](https://r4ds.had.co.nz/strings.html)). The output should show both URLs highlighted. Now do the same for hashtags - strings that include a "#" symbol followed by any letter, number, or underscore.**
+
+Hint: these are common tasks in cleaning and analyzing Tweet/text data, so doing some research might save you a lot of time.
+
+Hint: be wary of how R specifically interprets regex strings. It might be helpful to look for regex strings specifically written for R.
+```{r url/hashtag_finder}
+
+ex <- "BREAKING NEWS - @brumleader urges everyone to do their bit in order to tackle the threat posed by rising coronavirus case numbers in city. Full statement here:\n\nhttps://t.co/3tbc6xcRFP\n\n#KeepBrumSafe\n#Btogether\n#COVID19\n#Coronavirus https://t.co/mo5bPUgGgC"
+
+url_pattern <- "http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
+ex_url <- str_extract_all(ex, url_pattern)
+ex_url
+
+#hashtag_pattern <- "#\\S+"
+hashtag_pattern <- "#[A-Za-z0-9]*" #updated excludes most cap. duplicity errors
+ex_hashtag <- str_extract_all(ex, hashtag_pattern)
+ex_hashtag
+
+```
+<br/>
+
+`url_pattern` found from: https://stackoverflow.com/questions/26496538/extract-urls-with-regex-into-a-new-data-frame-column
+
+`hashtag_pattern` found from:
+https://stackoverflow.com/questions/13762868/how-do-i-extract-hashtags-from-tweets-in-r
+
+**2. Add two new columns to the `covid_tweets` dataframe: `n_link` should include the number of URLs in the Tweet text, and `n_ht` should be the number of hashtags. Then, create a linear model predicting `retweet_count` from `n_link` and `n_ht`.  Were either of these predictors statistically significant? Are they significant predictors of `favorite_count`? Be sure to show the model summaries.**
+
+Hint: be sure to read the stringr documentation.
+```{r new_cols}
+covid_tweets <- covid_tweets %>% 
+  mutate(n_link = lengths(str_extract_all(tweet_text, url_pattern)))
+
+
+covid_tweets <- covid_tweets %>% 
+  mutate(n_ht = lengths(str_extract_all(tweet_text, hashtag_pattern)))
+
+covid_tweets
+```
+```{r linear_models}
+
+#lm predicting retweet_count from n_link and n_ht
+summary(lm(retweet_count ~ n_link + n_ht,
+           data = covid_tweets))
+
+#lm predicting retweet_count from n_link
+summary(lm(retweet_count ~ n_link,
+           data = covid_tweets))
+
+#lm predicting retweet_count from n_ht
+summary(lm(retweet_count ~ n_ht,
+           data = covid_tweets))
+#-------------------------------------------------
+#lm predicting favorite_count from n_link and n_ht
+summary(lm(favorite_count ~ n_link + n_ht,
+           data = covid_tweets))
+
+#lm predicting favorite_count from n_link
+summary(lm(favorite_count ~ n_link,
+           data = covid_tweets))
+
+#lm predicting favorite_count from n_ht
+summary(lm(favorite_count ~ n_ht,
+           data = covid_tweets))
+
+```
+
+From the 3rd and 6th linear models shown above it appears that the number of hashtags `n_ht` is correlated with both the number of retweets `retweet_count` and the number of favorites `favorite_count`. 
+
+The p-value of `n_ht` for `retweet_count` is 0.7095, which means there is insufficient evidence to reject the null hypothesis that there *is* a linear correlation between hashtags and retweets.
+
+The p-value of `n_ht` for `favorite_count` is 0.8798, which means there is also insufficient evidence to reject the null hypothesis that there *is* a linear correlation between hashtags and favorites
+
+These linear models show there is a strong correlation between `n_ht` and engagement on Twitter.
+
+***
+
+Conversely, the 2nd and 5th linear models shown above show that the number of links `n_link` **is not correlated** with either the number of retweets `retweet_count` or the number of favorites `favorite_count`. 
+
+The p-value of `n_link` for `retweet_count` is 0.09491, which means there is sufficient evidence to reject the null hypothesis that there is a linear correlation between links and retweets.
+
+The p-value of `n_link` for `favorite_count` is 0.004643, which means there is sufficient evidence to reject the null hypothesis that there is a linear correlation between links and favorites.
+
+These linear models show there is not a correlation between `n_link` and engagement on Twitter.
+***
+<br/>
+
+**3. Using stringr and dplyr (not tm or tidytext), produce a dataframe consisting of the 5 most used hashtags in our Tweets with the number of times they were used.**
+
+Hints: (1) you may want to check out the `unnest` function; (2) for reference, there are 55 unique hashtags in the dataset when ignoring capitalization if you specified the regex according to the details I gave in question 1.
+
+
+```{r hashtag_dataframe}
+ht_df <- covid_tweets %>% 
+  mutate(hashtags = 
+           str_extract_all(tweet_text, hashtag_pattern)) %>%  
+  unnest(hashtags) %>%
+  select(hashtags)
+ht_df
+
+ht_freq_df <-  ht_df %>% 
+  count(hashtags) %>% 
+  arrange(desc(n)) %>% 
+  top_n(6)
+ht_freq_df
+```
+
+My regex expression reduces number of hashtags to 58. It is clearly not perfect as the first 2 most popular are #coronavirus and #Coronavirus, which should be counted as the same. Hence, I selected for top **6** entries, to view the top 5 most popular hashtags in the dataset.
+
+<br/>
+
+**4. Create a new column in `covid_tweets` called `cleaned` which includes the original Tweets with hashtags and links removed. We will use this column for the remaining questions.** 
+```{r cleaned_text}
+
+#gsub() links removed
+covid_tweets <- covid_tweets %>% 
+  mutate(cleaned = gsub("http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\\(\\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+", "", tweet_text))
+
+#gsub() hashtags removed
+covid_tweets <- covid_tweets %>% 
+  mutate(cleaned = gsub("#[A-Za-z0-9]*", "", tweet_text))
+covid_tweets
+
+```
+<br/>
+
+
+**5. Using tidytext, produce a dataframe showing the ten most common words in English-language Tweets after URLs and hashtags have been removed (use our new column `cleaned`). Then secondly show the most common words excluding stopwords.**
+
+Hint: look at the tidytext docs for `unnest_tokens`.
+
+```{r load_stop_words}
+data("stop_words")
+```
+
+```{r common_words_dataframe}
+
+#full list including stop words
+tidy_words_df <- covid_tweets %>% 
+  filter(language == "en") %>% 
+  unnest_tokens(word, cleaned, token = stringr::str_split, pattern = " ") %>% 
+  select(word)
+
+#convert to n counts
+tidy_words_df <- tidy_words_df %>% 
+  count(word)
+
+#select top_n(10)
+top_tidy_words_df <- tidy_words_df %>% 
+  arrange(desc(n)) %>% 
+  top_n(11)
+top_tidy_words_df
+
+#remove stop words
+stop_words_rm_df <- tidy_words_df %>% 
+  anti_join(stop_words)
+
+#select top_n(11) - 1st is whitespace
+top_words_w_stop_rm <- stop_words_rm_df %>% 
+  arrange(desc(n)) %>% 
+  top_n(11)
+top_words_w_stop_rm
+
+```
+Cited: https://www.rdocumentation.org/packages/tidytext/versions/0.2.6/topics/unnest_tokens 
+
+I seected top 11 for both since both have whitespace, which is technically not a stop word, present as the most prevalent (n = 54).
+
+<br/>
+
+
+**6. Create a document-term matrix which including english-language Tweets. We will discuss what to do with a dtm in the next lab.**
+```{r document_term_matrix}
+tweets_DTM <- covid_tweets %>% 
+  filter(language == 'en') %>%
+  unnest_tokens('word', cleaned)  %>% 
+  count(date, word) %>% 
+  cast_dtm(date, word, n) #cast to dtm
+tweets_DTM
+```
+<br/>
+
+**7. How could you potentially use text analysis in the final project you have been working on? (You don't necessarily need to do it for the project, just think hypothetically).**
+```
+While the scope of my project does not include sentiment analysis through platforms like Twitter I could potentially use text analysis to better understand the prevalence of relevant terms, in certain regions, at specific times. This would help me uynderstand Twitter engagement and trends within topics such as climate change and global warming immediately after natural disaster events occur.
+```
+<br/>
+
+**8. Last week you proposed some datasets that you might be able to use for our final projects in the class. If you haven't yet, try to download or otherwise get access to the dataset so you can start playing with it. Either way, what did you find? Did your data have the information you needed after all? Was it as easy to access as you expected? Even if you're not able to get all the data by now, write something about your plan for getting access to the data.**
+```
+Yes, I was able to look at the Google Trends interface and understand how it works. Next steps for me are to look at the gtrendsR package and produce a function that maps terms of interest to prevalence and frequency in certain regions. I will then be able to use the natural disaster data set to look at specific time periods.
+```
+
+
+
+
