@@ -1,0 +1,161 @@
+---
+title: "Social Network Analysis Lab"
+author: "Scott Burstein"
+date: "09/26/2020"
+###"Data Science and Society (Sociology 367) - Lab #5"
+output: html_document
+---
+
+
+In this lab, we will practice the fundamentals of social network analysis. Edit the Lab #5 markdown file ([link to file](https://github.com/dssoc/dssoc.github.io/raw/master/assignments/Lab_5.Rmd)) for your submission. Remember to change the "author" field above to your name. **Send the markdown file (.Rmd) to your TA via direct message on Slack.** Be sure to do the required reading!
+
+**Required readings:** 
+
+* [Intro to Network Analysis with R, by Jesse Sadle](https://www.jessesadler.com/post/network-analysis-with-r/). 
+* [Network analysis with R and igraph: NetSci X Tutorial (Parts 2-7), by 
+Katya Ognyanova](https://kateto.net/networks-r-igraph)
+
+[R for Data Science: Basic Programming (17-21)](https://r4ds.had.co.nz/program-intro.html).
+
+**Optional reading:** 
+
+* [Official documentation for `igraph` package](https://igraph.org/r/doc/)
+* [Official documentation for `ggraph` package](https://cran.r-project.org/web/packages/ggraph/ggraph.pdf)
+* [Introduction to `ggraph` layouts](https://www.data-imaginist.com/2017/ggraph-introduction-layouts/)
+
+
+### Required Datasets
+
+The network data that you will be drawing on for this lab can be downloaded from the course website: 
+
+(1) `canidates_flw_el`: [dnc_canidates_flw_el.Rdata](https://github.com/dssoc/dssoc.github.io/raw/master/datasets/dnc_candidates_flw_el.Rdata) is an edgelist of the top five DNC cadidates for president (according to delegates won as of February 15, 2020), and the accounts they follow on Twitter.
+
+(2) `canidates_flw_am`: [dnc_canidates_flw_am.Rdata](https://github.com/dssoc/dssoc.github.io/raw/master/datasets/dnc_candidates_flw_am.Rdata) is an adjacency matrix of the top five five DNC cadidates for president (according to delegates won as of February 15, 2020), where ties/edges are the number of accounts they mutually follow on Twitter.  
+
+
+**Load the datasets:**
+```{r load_packages_and_data message=FALSE}
+library(igraph)
+library(ggraph)
+library(tidyverse)
+load('/Users/ScottBurstein/Desktop/fall2020/DSS/Lab 5/dnc_candidates_flw_am.Rdata')
+load('/Users/ScottBurstein/Desktop/fall2020/DSS/Lab 5/dnc_candidates_flw_el.Rdata')
+```
+<br/><br/>
+
+### Exercises
+<br/>
+
+**1. Describe what nodes/vertices and links/edges are. What kinds of things in the world might we attempt to model as networks?**
+
+```
+Nodes or vertices refer to specific objects or entitities, which are related in some way by links/edges. This is an incredibly broad definition, but reflects the wide range of  complex network relationships which can be represented using this technique.
+
+Examples of potential networks to model are human social networks, computers sharing information, the internet of things (IoT) distributing data about an individual, logistics of packages and mail shipped between countries or cities, and many more. Another interesting aspect of network analysis is that additional information, such as strength of the edge relationship, factors about individual nodes, or even time dependent changes can be mapped as well, providing more data and context.
+```
+<br/>
+
+**2. What kinds of questions would you be able to answer with networks that you might not be able to answer using analysis techniques we have covered so far?**
+```
+Complex relationships involving many individual data points can be visualized better in networks if the relationships are more insightful when viewed in aggregate. For example, graphing social networks using traditional methods or the study of how information spreads on social media would be inconclusive when viewed in barcharts and scatterplots.
+```
+<br/>
+
+**3. Describe the data in the `candidates_flw_am` adjacency matrix and the `candidates_flw_el` edgelist. How do the two networks differ? Do they represent directed or undirected edges? Do the edges have weights?**
+```
+The `candidates_flw_am` adjacency matrix represents the number of common followers between two candidates. It is a table, and the resulting network has undirected edges. The edge weight is representative of the number of mutual followers. Conversely, the `candidates_flw_el` edge list represents all the directed relationships (follows) between a given list of candidates. It is a two column list. While the adjacency matrix is good for determining general strength of relationship or commonality between the 5 candidates, the edge list provides much more information about who exactly is following who on Twitter. It also shows the clusters and groups of accounts on Twitter, revealing more about the large trends amongst different account clusters in the larger network.
+```
+<br/>
+
+**4. Describe three different metrics (e.g. betweenness centrality, degree, etc) that can be used to summarize networks or specific nodes/vertices within a network.**
+```{r summary-metrics-described}
+#betweenness()
+#centrality()
+#degree()
+```
+<br/>
+
+`betweenness()`
+"Measures how local a node is relative to the entire network. It is defined as the number of geodesics - or shortest paths between other nodes - that go through the given node. Effecitvely, if a node is in the middle of 4 other nodes (say in a cube shape), that are all connected by a shortest path, then the betweenness of that central node would be 2 since there are 2 diagonals that cross the given node.
+
+`centrality()`
+Measures and quantifies how connected a given node is, relative to the larger network. In other words, the nodes that are crossed the most to travel along any combination of edges (that yields the shortest path) between two distinct nodes in a network, has the highest centrality. For example, in a social network, individuals who are perceived as more influential or have more followers, are more important to the larger architecture of the social network, and thus have greater centrality.
+
+`degree()`
+Quantifies the number of edges that are connected to a given vertex. If a node is connected to many other nodes, and thus has more edges, it will have a larger degree measure.
+
+
+**5. Using the `candidates_flw_am` *adjacency matrix*, create a graph (network) object. Make sure to include information about the edge weights (i.e. the number of accounts shared in common). Hints: (1) you may need to use the `as.matrix` function to the dataframe before converting to igraph if you are having problems with data types; (2) you may need to look through `igraph`'s official documentation (see link under "optional reading" above) to decide which function will convert adjacency matrices to igraph objects.**
+```{r graph-network-object}
+
+cand_adj_mat <- as.matrix(candidates_flw_am)
+
+candidate_net <- graph_from_adjacency_matrix(cand_adj_mat,
+                                             mode="undirected",
+                                             weighted = TRUE)
+
+E(candidate_net)$width <- E(candidate_net)$weight*0.05
+                                             
+plot(candidate_net, vertex.label.dist=3)
+```
+<br/>
+Reference used: https://igraph.org/r/doc/graph_from_adjacency_matrix.html
+
+I used igraph's online documentation to convert the adjacency matrix into an igraph object. Next steps would be improving the graphics and viz quality by implementing some more features. I pulled out the labels using `vertex.label.dist=3` as an additional argument to the plot() function. I originally tried to make the edges proportional using `edge.width=weight` however it overrode the existing edge width argument (proportional to mutual followers). I worked around this by reducing all edge widths within the width call, by making the width equal to a fraction (0.05) of the `E(candidate_net)$weight`.
+
+**6. Using the graph object that you created, indicate which candidate has the highest betweenness centrality, taking into account edge weight. If you had to write this finding in a research paper, how would you describe its meaning to a social science audience?**
+```{r candidate-stats}
+betweenness(candidate_net, weights=weight) #standard measure, num geodesics
+edge_betweenness(candidate_net, weights=weight) #takes into account edge metrics
+centralization.betweenness(candidate_net) #summary statistics based on centrality
+```
+<br/>
+
+I included a few different measurements of centrality in order to determine which candidate has the highest betweeenness. These values are clearly flawed though, because looking at the `betweenness()` function, it shows that Joe Biden has the highest betweenness, when it reality he has the lowest. Looking at the adjacency matrix, Joe Biden has the fewest mutual followers with all other candidates. I believe that either Bernie Sanders or Pete Buttigieg have the highest betweenness, since they have the most mutual followers with the most other candidates. Between the two, they have very similar numbers, and it is hard to determine how the betweenness algorithm favors different distributions of mutual connections across other candidates, as both have very similar numbers of mutual followers with all other candidates.
+
+
+**7. Make a visual of your graph object using `ggraph`, with edges scaled by weight (i.e. the number of accounts that the two candidates mutually follow). If you decide to make this graph in Gephi, feel free to submit a separate image of your final visual in addition to your .Rmd file.**
+```{r updadted-graph-network-object}
+ggraph(candidate_net, layout = "kk")+
+  geom_node_point()+
+  geom_edge_link(aes(width = weight), color = "grey")+
+  theme_void()+
+  geom_node_text(aes(label=name))
+```
+<br/>
+
+Adjacency matrix network graphed in ggraph. Easier to read and made edge thickness relative to weight, which is a measure of the number of mutual followers on Twitter between different candidates. As expected, most of the candidates have mutual followers with one another. The only exception is between Amy Klobuchar and Joe Biden, who have 0 mutual followers. Joe Biden has by far the fewest number of mutual followers with all other candidates as well. This is likely because Joe Biden only follows (as of 09/26/2020) 28 accounts on Twitter, whereas the other candidates follow many more accounts.
+
+**8. Now we turn our attention to two-mode networks. Create an igraph object from the `candidates_flw_el` edgelist, and calculate the degree for each candidate.**
+```{r two-mode-network}
+
+cand_edge_list <- as.matrix(candidates_flw_el)
+
+candidate_relationships <- graph_from_edgelist(cand_edge_list,
+                                               directed = TRUE)
+  
+plot(candidate_relationships,
+     vertex.label="",
+     vertex.arrow.size=0.2,
+     vertex.size=0.2,
+     edge.width=0.2 )+
+  layout_nicely(candidate_relationships)
+
+```
+<br/>
+Reference used for viz: https://dshizuka.github.io/networkanalysis/03_plots.html
+
+Obviously, effort is needed to clean and make the visualization more appealing and accessible. That being said, the above igraph does make clear the network clusters which exist within the candidates edge list data set. While the act of following another candidate on Twitter might be a trite measure of relationships / access to information, it is apparent that there are at least 3 or 4 large groups of candidates who interact primarily with one another on Twitter. The `layout_nicely()` feature in fact spread the candidates into 7 distinct groups. Of course, there is a lot of overlap between most of the candidates. However when viewed in aggregate it is clear that candidates have - by virtue of social networks - formed networks that make it more difficult for them to recieve equal shares of information from all other candidates.
+
+```{r candidate-degree}
+degree(candidate_relationships)
+```
+
+Print out of all the candidate relationship degrees. Most twitter accounts included are order 1, with some 2 and fewer 3 values.
+
+**9. In last week's lab excercises, you were asked to indicate possible research topics that you would be interested in pursuing for your final project. Choose one of your topics and expand on it in more detail (i.e. at least one paragraph).**
+```{r expanded-topic}
+```
+
+I would like to look at one of the many ways in which weather affects human behavior. Examples of this might be daily weather's impact on buying habits, or looking at air quality as a measure of overall 
+health. I am interested in looking at climate trends, and Dr. Bail recommended I look at one of the many R weather data packages. It would also be interesting to see how people's sentiment towards climate change or something else specific changes as their local environment changes, i.e. with a hurricane or fire. I am very interested in using weather and climate data in my future endeavors, and would like this project to serve as an opportunity to dive into some of these environment-related packages and data sets, in order to come up with a potentially interesting insight or conclusion regarding human behavior, or even human sentiment towards climate change as an issue.
