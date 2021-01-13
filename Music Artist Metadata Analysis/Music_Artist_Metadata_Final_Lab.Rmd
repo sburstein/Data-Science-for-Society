@@ -1,0 +1,204 @@
+---
+title: "Lab #3: Data Visualization"
+author: "Scott Burstein"
+date: "09/12/2020"
+###"Data Science and Society (Sociology 367) - Lab #3"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+In this lab, we will practice visualizing data. Edit the Lab #3 markdown file ([link to file](https://github.com/dssoc/dssoc.github.io/raw/master/assignments/Lab_3.Rmd)) for your submission. Remember to change the "author" field above to your name. Send the markdown file (.Rmd) to your TA via direct message on Slack.
+
+The exercises in this lab correspond with  *R for Data Science* (Wickham), [chapters 3 and 28](https://r4ds.had.co.nz/data-visualisation.html), and *Data Visualization a Practical Introduction* (Healy), [chapter 1](http://socviz.co/lookatdata.html).
+
+**Optional Resources:**
+
+- [RStudio Cloud intro](https://rstudio.cloud/learn/primers/3)
+- [Data Visualization: A Practical Introduction](http://socviz.co/), Kieran Healy. (Princeton: Princeton University Press, 2019)
+- [Fundamentals of Data Visualization](https://serialmentor.com/dataviz/)
+- [The R Graph Gallery](https://www.r-graph-gallery.com/)
+- [Sometimes the y-axis doesn't start at zero, and it's fine.](https://flowingdata.com/2015/11/23/sometimes-the-y-axis-doesnt-start-at-zero-and-its-fine/)
+- [What would feminist data visualization look like?](https://civic.mit.edu/2015/12/01/feminist-data-visualization/), MIT Civic Media Lab by kanarinka. 
+
+
+### Required Dataset
+
+The data that you will be using for this lab can be downloaded from the course website: 
+
+- `artist_meta`: [artist_meta.Rdata](https://github.com/dssoc/dssoc.github.io/raw/master/datasets/artist_meta.Rdata) is a table of Grammy nominee names and some of their metadata.
+
+
+**Load the datasets:**
+```{r}
+library(tidyverse)
+#load('artist_meta.Rdata')
+load('~/Downloads/artist_meta.Rdata')
+view(artist_meta)
+```
+<br/><br/>
+
+### Exercises
+<br/>
+
+**1. Using the `artist_meta` table, create a new factor variable (`is_pop`) that indicates whether the artist is associated with a pop genre. The labels for this factor variable should be 'pop' and 'not pop'.**
+
+
+```{r is_pop_var}
+artist_meta <- artist_meta %>%
+  mutate(is_pop = grepl('pop', genre, fixed=TRUE)) %>%
+  mutate(is_pop = ifelse(is_pop, 'pop', 'not pop')) %>%
+  mutate(is_pop = as.factor(is_pop))
+artist_meta
+```
+
+**Also notice one additional issue with the data that might cause issues later on: the `popularity` column is an integer list of size one. Consider using the `mutate` function with the `is.numeric` function to coerce the data into the type you need (see section 20.4.1 of *R for Data Science* to learn more).**
+```{r popularity-fix}
+artist_meta <- artist_meta %>%
+  mutate(popularity = as.numeric(popularity))
+artist_meta
+```
+<br/>
+
+**2. Using the `artist_meta` table, make a scatterplot of `followers` vs `popularity`.**
+```{r followers-popularity-scatterplot}
+artist_meta %>% ggplot(
+  aes(followers, y = popularity)) +
+  geom_point()
+```
+<br/>
+
+**3. Change the theme of your scatterplot from Exercise 2, and apply appropriate x- and y-axis labels. Note: for theme information, see [28.6 in *R for Data Science*](https://r4ds.had.co.nz/graphics-for-communication.html#themes) or 8.3 of *Data Visualization a Practical Introduction*.**
+```{r scatterplot-w-theme-and-labels}
+
+artist_scatter <- artist_meta %>% ggplot(
+    aes(followers, y = popularity)) +
+    geom_point() +
+    labs(title = "Followers vs. Popularity   Scatterplot",
+         y = "Popularity Rating (0-100)",
+         x = "Followers (count)") +
+    theme_linedraw()
+
+artist_scatter
+  
+```
+<br/>
+
+**4. Now, color your scatter plot points according to whether the artists are associated with a pop genre.**
+```{r scatterplot-w-pop-color}
+artist_scatter <- artist_meta %>% 
+  ggplot(aes(followers,
+             y = popularity,
+             color = is_pop)) +
+    geom_point() +
+    labs(title = "Followers vs. Popularity   Scatterplot",
+         y = "Popularity Rating (0-100)",
+         x = "Followers (count)") +
+    theme_linedraw()
+  
+artist_scatter
+```
+<br/>
+
+**5. Change the colors in the plot created for Exercise 4 to something that you think looks better. Note: for this, you may want to use a `scale_color_manual()` layer in your plot.**
+```{r scatterplot-w-custom-pop-colors}
+artist_scatter <- artist_meta %>% 
+  ggplot(aes(followers,
+             y = popularity,
+             color = is_pop)) +
+    geom_point() +
+    labs(title = "Followers vs. Popularity   Scatterplot",
+         y = "Popularity Rating (0-100)",
+         x = "Followers (count)") +
+    theme_linedraw() +
+    scale_color_manual(values = c("orange", "navy"))
+
+artist_scatter
+```
+<br/>
+
+**6. Select *and* implement an appropriate visualization to describe the relationship between `pop` and  `popularity`. Justify your choice of chart (i.e. why did you choose this chart type and not another), and describe how you would improve your chart, given more time.**
+```{r pop-popularity-boxplot}
+
+pop_counts <- artist_meta %>%
+  group_by(is_pop) %>%
+  dplyr::summarise(count = n())
+
+pop_popularity_boxplot <- artist_meta %>% 
+  ggplot(aes(x = is_pop,
+             y = popularity)) +
+    geom_jitter(alpha = 0.7, color = "green") +
+    geom_boxplot(alpha = 0) +
+    labs(title = "Popularity Ratings",
+         subtitle = "divided into pop and not pop groups",
+         y = "Popularity Rating (0-100)",
+         x = "Is pop?") +
+    geom_text(data = pop_counts, aes(label = count,
+                                    x = is_pop, y = 30)) +
+    ylim(25,100)
+
+pop_popularity_boxplot
+```
+I chose to implement a boxplot visualization to represent the relationship between `pop` and `popularity` because it seemed most apt to portray the correlation between one binary (`pop`) and one seemingly continuous (`popularity`) variable. Other types of visualizations, such as bar charts or pie charts, would not make as much sense since the correlation between these two variables would be harder to infer. What would a pie chart say about `popularity`? How would `popularity` ratings be grouped in a bar chart? These questions make it much more difficult to justify implementing one of these visualization techniques. A scatterplot did not make sense since there is only one numerical variable to plot - is_pop can only be one of two possibilities. For this reason I chose to represent the data on one axis (`popularity`) and have the dataset be divided into two groups based on `pop`.
+
+If given more time I would add more descriptive features to the plot, such as horizontal lines representing the mean or other summary statistics for each set. Additionally, I would create more meaningful labels. I would also perform analysis on the data in order to learn about key differences in the data that may be important to emphasize in the visualization.
+
+<br/>
+
+**7. In your own words, describe why we make data visualizations.**
+```{r why-do-we-make-visualizations}
+"
+We make data visualizations in order to better understand and draw conclusions from large sets of data. It can be impossible to infer any meaningful information without proper formatting. Visualizations, such as charts and graphs, help express trends and patterns in a complex data set.
+"
+```
+<br/>
+
+
+**8. In your own words, describe at least three qualities of a good data visualization. Many of these were provided in your reading.**
+```{r 3-qualities-of-good-visualizations}
+"
+Good data visualizations can have a wide range of positive attributes. Three qualities that I had not explicitly thought of before that were mentioned in the reading are
+1) Strong aesthetic judgements
+2) Substantive
+3) Accurate
+
+To put in other words, graphs must be visually appealing, meaningful, and also honest. Visualizations that are cluttered or messy can be hard to decipher. Additionally, it is important that the graph is trying to convey some information that could not otherwise be represented as easily. And lastly, the data underlying the visualization must be truthful. If any of these qualities are not present in a visualization, it will likely lead to a poor outcome.
+"
+```
+<br/>
+
+**9. Link to a data visualization online and describe something that could make it better at conveying the central information or relationship.**
+```{r online-data-visualization-analysis}
+#https://www.channel4.com/news/factcheck/climate-change-in-ten-graphs
+"
+The first chart on this site, a line graph portraying temperature anomolies over the past 140 years, could be formatted better to more readily express the central relationship. As it is now, the individual lines are tightly overlayed and muddled together, which makes it hard to trach a specific climate model across the entire graph. Additionally, it is hard to infer what the temperature anomaly (˚C) actually means at any point on the chart. There should be some contextualized meaning of the data on the actual visualization. Additionally, it was formatted as to fit within the larger scope of the article, but it does not seem really set up to be pulled or extracted and viewed independently (there are no citations or references to data sources on the actual visualization).
+"
+
+```
+<br/>
+
+**10. Compare two chart types from the R Graph Gallery (`https://www.r-graph-gallery.com/index.html`). What kinds of relationships are they used to represent? What kinds of relationships would they be unable to represent? For example, do they represent continuous or categorical variable relationships? Both? Would they be useful at describing a temporal relationship, or relative proportions? These are example questions you might address as you compare and contrast. Often a chart can do many things. Simply show that you have thought deeply about how and when to use different chart types.**
+```{r comparison-of-two-chart-types}
+"
+A violin chart is used to represent quantitative information in a descriptive way. It takes the underlying structure of a boxplot, and adds to it by also representing the distribution / plot density within each dataset. Data is typically broken down into descriptive groups that can be summarized independently. It is used to convey differences in summary statistics between different groups.
+"
+
+"
+A bubble plot is used to show correlation between two variables on a independent and dependent axis. It is effectively a scatterplot, that incorporates an additional quantitative variable to express circle size for each point. It can be useful for describing trends that follow two axes, while also saying something about the frequency or rate of the given occurrence. It is best for visualizing trends and perhaps temperoral relationships as well.
+"
+
+```
+<br/>
+
+**11. Provide three social science research questions that you would be interested in exploring for your final project. There are no right answers here. We just want to get a sense of interests.**
+```{r social-science-research-questions}
+"
+How do natural disasters such as hurricanes, wildfires, and storms impact local sentiment towards climate change?
+
+How do social networks influence the discussion of climate change? Are certain individuals able to shape the discussion in ways that others cannot?
+
+How does the weather affect buying patterns for household goods? When exactly and why do peoply panic when learning about impending crises?
+"
+```
