@@ -1,0 +1,356 @@
+---
+title: "Lab #6: Working with APIs"
+author: "Scott Burstein"
+date: "10/03/2020"
+###"Data Science and Society (Sociology 367) - Lab #6"
+output: html_document
+---
+
+
+In this lab, we will practice working with application programming interfaces (APIs). Edit the Lab #6 markdown file ([link to file](https://github.com/dssoc/dssoc.github.io/raw/master/assignments/Lab_6.Rmd)) for your submission. Remember to change the "author" field above to your name. **Send the markdown file (.Rmd) to your TA via direct message on Slack.** Be sure to do the required reading!
+
+**Optional reading:** 
+
+* [rtweet Package Documentation](https://cran.r-project.org/web/packages/rtweet/rtweet.pdf)
+* [Intro to APIs](https://medium.com/@rwilliams_bv/apis-d389aa68104f), by Beck Williams
+* [An Illustrated Introduction to APIs](https://medium.com/epfl-extension-school/an-illustrated-introduction-to-apis-10f8000313b9), by Xavier Adam
+* [Obtaining and using access tokens for Twitter](https://cran.r-project.org/web/packages/rtweet/vignettes/auth.html)
+
+
+### Required Datasets
+
+We will use the following datasets for the exercises.
+
+(1) `senator_data`: [Senator_Profiles.Rdata](https://github.com/dssoc/dssoc.github.io/raw/master/datasets/Senator_Profiles.Rdata) includes information about all senators, including their twitter handles (in the `screen_name` column).
+
+
+**Load the datasets and libraries:**
+```{r message=FALSE}
+library(tidyverse)
+library(rtweet)
+load('/Users/ScottBurstein/Desktop/fall2020/DSS/Lab 6/datasets/Senator_Profiles.Rdata')
+```
+<br/><br/>
+
+
+
+### API Setup
+
+Follow these two steps to set up your program for exercise.
+
+#### 1. Set up your API credentials with Twitter. 
+
+If you don't already have one, you will need to create a new Twitter account. Next, you need to apply for a developer account and access credentials (api keys) for retrieving data. In [Twitter's getting started guide](https://developer.twitter.com/en/docs/twitter-api/getting-started/guide), navigate to the section titled "How to get access to the Twitter API." This will include applying for a developer account, and retreiving the app's keys and tokens. [This tutorial](https://cran.r-project.org/web/packages/rtweet/vignettes/auth.html) may also be helpful. You'll use these for the next step. 
+
+#### 2. Store your credentials.
+Copy and paste the json below into a new json file named `api_credentials.json`. Note that a json file is just a text file where the filename ends in ".json", so you can use notepad or text editor to make the new file. From the instructions in Step 1 we have the api key, api secret key, access token, and access token secrets - replace the approprate values in the json file and save (in a place you remember).
+
+*Devin these are your credentials. Thank you! I will replace with mine once 
+I am approved. For some reason I am not able to confirm my email on Twitter, 
+which means I am not able to apply for developer credentials. I reached out to 
+Twitter about this, and am still waiting to hear a response.
+```
+{
+  "app": "<app name here>",
+    "api_key": "<api key here>",
+    "api_secret_key": "<api_secret_key here",
+    "access_token": "<access token here>",
+    "access_token_secret": "<access token secret here>",
+    "bearer_token": "<unused>"
+}
+```
+
+#### 3. Authenticate your application.
+
+After you have the credentials stored into the json file, run this code to authenticate the application (be sure to use the filename corresponding to your actual file). This simply reads the json data and provides them directly to the `create_token` function of the `rtweet` package. Once you complete this step, you should be able to access Twitter data through the API. See the `rtweet` package documentation to see how to access different types of data.
+
+```{r, eval = F}
+
+# this code will read credentials from the JSON file you created.
+install.packages("rjson")
+library('rjson')
+creds <- fromJSON(file = 'api_credentials.json') # POINT THIS TO YOUR FILE
+
+# will allow you to authenticate your application
+token <- create_token(
+  app = creds$app,
+  consumer_key = creds$api_key,
+  consumer_secret = creds$api_secret_key,
+  access_token = creds$access_token,
+  access_secret = creds$access_token_secret)
+
+# this allows you to check the remaining data
+lim <- rate_limit()
+lim[, 1:4]
+
+```
+
+
+
+## Exercises
+<br/>
+
+**1. In your own words, describe what an application programming interface is, and why it is useful to data scientists/computational social scientists.**
+
+```{r API-definition}
+```
+<br/>
+
+An aaplication programming interface is the software that mediates and directs 
+information between a database and users. There are many examples of the scope 
+and capabilities of APIs, but at their core, APIs serve as the functional language
+connecting a client device and the servers which store data and relevant 
+information.
+
+Data scientists and computational social scientists alike rely on APIs heavily 
+to automate and expedite tasks that would otherwise take much longer to develop 
+from scratch. For example, in the case of Twitter, it would be far more challenging 
+to implement an application that scrapes Twitter for relevant tweets / information 
+as opposed to using the pre-made an tested Twitter API with its built-in functionality.
+
+Optional Reading Resources:
+https://medium.com/@rwilliams_bv/apis-d389aa68104f
+https://medium.com/epfl-extension-school/an-illustrated-introduction-to-apis-10f8000313b9
+
+
+**2. Data science projects often require you to merge data from different sources. In this case, we already have `sentator_data` which includes information that has been manually collected, like political party and representative state, but now we want to add additional data about the number of "friends" they have and the number of statuses they have posted on Twitter. Use the API to augment `senator_data` with this additional data from the Twitter platform. You may need to refer to the [rtweet Package Documentation](https://cran.r-project.org/web/packages/rtweet/rtweet.pdf) to see which function to use. After you request the data from the api, join (see `left_join`) the Twitter data into `the existing dataframe`senator_data` to make a new dataframe called `senator_accounts`. NOTE: we don't need to get the list followers or Tweets - we just need the *number* of friends and tweets.**
+```{r Augmented-Senator-Data}
+
+users_data <- lookup_users(senator_accounts$user_id)
+#head(users_data)
+#colnames(users_data)
+
+nums <- users_data %>%
+  select(user_id, friends_count, statuses_count)
+#num_friends
+
+senator_accounts <- left_join(senator_data, nums, by = "user_id")
+view(senator_accounts)
+```
+<br/>
+
+`num_friends` - Number of friends by user, extracted by selecting columns from
+`rtweet` lookup_users() function which gets information about target user(s).
+
+p. 42 https://cran.r-project.org/web/packages/rtweet/rtweet.pdf
+
+`num_tweets` - Number of tweets by user, extracted by selecting columns from
+`rtweet` lookup_users() function which gets information about target user(s).
+
+https://cran.r-project.org/web/packages/rtweet/vignettes/intro.html
+
+
+
+**3. Calculate the average number of friends for each senator by political party. For instance, you should be able to say something of the form "Republicans have an average of X friends and Democrats have an average of Y friends. What conclusions can you draw from this result? What assumptions are needed to come to these conclusions?**
+```{r avg-friends-by-party}
+avg_friends_by_party <- senator_accounts %>%
+  select(party, friends_count) %>%
+  group_by(party) %>%
+  summarise(sum(friends_count) / n()) %>%
+  ungroup()
+avg_friends_by_party
+```
+<br/>
+
+Republics have an average of 1,707 friends and Democrats have an average of 
+7,496 friends on Twitter. Independents have an average of 1,444 friends. These 
+metrics are entirely based on Twitter `friends` data and thus, neglect the 
+relationships which politicians form offline, especially with demographic groups 
+that are less likely to be on Twitter.
+
+From the data, it seems as though democrats have far more friends on Twitter than 
+independents and republicans, however this statement neglects the fact that a 
+higher proportion of Twitter users are democrats.
+
+Pew Research Article comparing Twitter demographics to U.S. demographics:
+https://www.pewresearch.org/internet/2019/04/24/sizing-up-twitter-users/
+
+**4. Use `ggplot` to create a [box plot](https://www.r-graph-gallery.com/boxplot.html) or [violin plot](https://www.r-graph-gallery.com/violin.html) showing the number of statuses that each senator has posted by gender. What does the visualization tell us? What advantage does a violin plot have over calculating averages (like we did in the previous question).**
+```{r statuses_by_gender_viz}
+violin_plot <- ggplot(data = senator_accounts,
+                      aes(x = gender, y = statuses_count, fill = gender)) +
+  geom_violin() +
+  labs(title = "Senator Twitter Posts by Gender",
+       x = "Gender",
+       y = "Number of Status Posts")
+violin_plot
+```
+
+The visualization shows the numerical distribution of both genders' 
+`statuses_count` values. In addition, it is easy to infer comparative 
+conclusions about the two. The violin plot shows portrays male senators' status 
+values as having a longer tail at the upper-end of values. 
+
+A violin plot adds information that a simple mean calculation cannot. It is hard
+to compare two groups simply by comparing average values.
+
+
+**5. Now write a function that takes an arbitrary sequence of Twitter user ids as an argument and returns a dataframe containing their last five Tweets, then use this function to make a dataframe consisting of the last five tweets from all senators. This should be a dataframe with 495 rows, five for each Senator in our dataset. Store this result in a new dataframe called `Tweets` - we will use it for later questions in this lab. Hint: for the function, one approach might be to use a loop to get Tweets from one user at a time, and merge the results into a single dataframe (`bind_rows` may be useful there).**
+
+```{r users-past-tweets}
+num_users <- 10 #number of Twitter users to display tweets for
+num_tweets <- 5 #number of tweets to display per user
+
+#vector of user ids to input into users_tweets function
+user_ids <- c(senator_accounts$user_id[1:num_users])
+
+#instantiate empty Tweets table
+
+
+users_tweets <- function(users) {
+  Tweets <- data.frame(user_id = character(),
+                       text = character(),
+                       display_text_width = double())
+
+  for (user in users) {
+    single_user_tweets <- get_timeline(user, n = num_tweets) %>%
+      select(user_id, text, display_text_width)
+    single_df <- data.frame(single_user_tweets)
+    #need to append single_user_tweets to Tweets table
+    Tweets <- bind_rows(Tweets, single_df)
+  }
+}
+#These are not yielding the intended result...
+users_tweets(user_ids)
+Tweets
+```
+
+###I am unsure why the Tweets table is returning an empty data frame.
+
+<br/>
+
+
+**6. Now add information from the `senator_accounts` dataframe into the `tweets` dataframe using a join operation (see `left_join`) based on `user_id`. The resulting Tweet dataframe should still have 495 rows, but include additional columns containing information about the senator that created the Tweet. Use this merged dataset and `ggplot` to create a [box plot](https://www.r-graph-gallery.com/boxplot.html) or [violin plot](https://www.r-graph-gallery.com/violin.html) showing the length of Tweet text (see the `display_text_width` column) by the political affiliation of the Senator that produced it.**
+
+Assuming visual representation is of the average text length for each Senator.
+
+###This is my attempt at Q6 given that I was unable to create a dataframe in Q5
+
+```{r combine-data-frames}
+tweet_frame_expanded <- left_join(tweets, senator_accounts, by = "user_id")
+```
+
+###Proposed ggplot violin plot assuming that I was able to create relevant dataframe.
+```{r tweet-viz}
+length_by_party <- tweet_frame_expanded %>%
+  select(party, display_text_width)
+
+length_by_party_plot <- ggplot(data = length_by_party,
+                               aes(x = party, y = display_text_width)) +
+                        geom_violin() + 
+                        labs(title = "Length of Senator Tweets by Political Affiliation",
+                             x = "Political Party Affiliation",
+                             y = "Tweet Character Length")
+```
+
+Given that I am currently unable to produce the visualization, I will 
+hypothesize that, on average, Democratic senators have longer tweet lengths on 
+average than Republican senators (based on no evidence / reasoning). I am very 
+curious to see if there is a noticable difference between the two parties. Also, 
+how do Independents stack up?
+
+<br/>
+
+
+**7. Look through the [`rtweet` package documentation](https://cran.r-project.org/web/packages/rtweet/rtweet.pdf) to identify one additional set of Twitter data you are interested in. Use the API to extract the data and generate one interesting figure (plot) or summary statistic about it. What conclusions can you draw from the these results?**
+
+Data Changes in real time as search_tweets() is executed when code chunk runs.
+```{r sentiment-analysis}
+fracking_tweets <- search_tweets("fracking")
+fracking_tweets
+
+GND_tweets <- search_tweets("green new deal")
+GND_tweets
+
+climate_change_tweets <- search_tweets("climate change")
+climate_change_tweets
+
+
+```
+<br/>
+```{r device-props-by-topic}
+ggplot(data = fracking_tweets,
+       aes(x =source, fill=source)) +
+  geom_bar(width = 1) 
+#  coord_polar()
+
+ggplot(data = GND_tweets,
+       aes(x =source, fill=source)) +
+  geom_bar(width = 1) 
+#  coord_polar()
+
+ggplot(data = climate_change_tweets,
+       aes(x =source, fill=source)) +
+  geom_bar(width = 1) 
+#  coord_polar()
+```
+
+As expected, there is no discernible differences in the proportion of users who tweet about these three topics and their respective devices. Perhaps if a larger sample was taken, then more insight could be made. However, it makes sense, and 
+is in some small way reassuring, that the users with different devices tweet 
+about these topics in fixed proportions. If one were to look at overall twitter 
+usage, these would likely be in proportion to the overall proportions of device sources. 
+
+It would be concerning if, for example, Android users were far more 
+likely to tweet about the Green New Deal than they were about climate change or 
+fracking. More interesting analysis could be done regarding users and their 
+devices, such as how their device choice might correlate with political or other 
+beliefs / interests.
+
+
+**8. Identify another API, whether it has an associated R package or not, and describe how you might use the data available from it in a social/data scientific research project, and more specifically in your final project.**
+```{r final-proj-API}
+```
+
+The free Open Weather Map API, found through Rapid API (https://rapidapi.com/), 
+provides real time and historical weather data and visualizations which could be used 
+in my final project. Rapid API also includes relevant code snippets for implementing 
+a given API in any number of languages, including R. 
+
+'''
+
+library(httr)
+
+url <- "https://rapidapi.p.rapidapi.com/weather"
+
+queryString <- list(
+  q = "London,uk",
+  callback = "test",
+  id = "2172797",
+  units = ""metric" or "imperial""
+  mode = "xml, html",
+)
+
+response <- VERB("GET", url, add_headers(x_rapidapi-host = 'community-open-weather-map.p.rapidapi.com'), query = queryString, content_type("application/octet-stream"))
+
+content(response, "text")
+
+'''
+
+https://rapidapi.com/community/api/open-weather-map
+
+I am also taking note of the following weather API, which is one of the most advanced 
+meteorolgical data APIs I have found on the Internet. It unfortunately does not have an associated R package, and it costs money to use.
+
+https://www.meteomatics.com/en/weather-api/?gclid=CjwKCAjwiOv7BRBREiwAXHbv3Ko02jIkNPQUoPVTAeFUb7xPfMNQiFPJTD-ZucT8vgFgR7WFtrYtoxoCWowQAvD_BwE
+
+
+
+**9. Develop a hypothesis for one of the research questions you described in the previous weeks. You can choose a new topic if you are no longer interested in your old ones, but make sure you'll be able to test the hypothesis using available data. For example, the hypothesis could be something like "H: when x does y, we see more z." This hypothesis is testable if we have empirical data about x, y, and z. Think carefully about what you might and might not be able to measure.**
+```{r research-hypothesis}
+```
+
+I would like to assess the correlation (or lack thereof) between Google search patterns regarding climate change / global warming, and the occurrence of natural disasters.
+
+Google Trends Platform:
+https://trends.google.com/trends/?geo=US
+
+and a weather database, such as the CRAN NOAA package `rnoaa`:
+https://cran.r-project.org/web/packages/rnoaa/index.html
+
+I am interested in the relationship between weather, especially abnormal weather events such as natural disasters and hurricanes, and the resulting shift in social conscience. A valid hypothesis would follow the following structure:
+
+Hypothesis: Natural disasters, such as hurricanes, generate more online search queries pertaining to
+global warming information. This hypothesis would have to be limited by time and location in order to pinpoint
+specific changes in search trends for a given region in a relevant period of time.
+
+
